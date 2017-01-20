@@ -184,7 +184,7 @@ static int lept_parse_string(lept_context* c, lept_value* v) {
 static int lept_parse_value(lept_context* c, lept_value* v);
 
 static int lept_parse_array(lept_context* c, lept_value* v) {
-    size_t size = 0, head = c->top;
+    size_t size = 0, i;
     int ret;
     EXPECT(c, '[');
     lept_parse_whitespace(c); /* delete leading blanks*/
@@ -199,13 +199,13 @@ static int lept_parse_array(lept_context* c, lept_value* v) {
         lept_value e;
         lept_init(&e);
         if ((ret = lept_parse_value(c, &e)) != LEPT_PARSE_OK) {
-            c->top = head; /* recovery stack*/
-            return ret;
+            break;
         }
+
         memcpy(lept_context_push(c, sizeof(lept_value)), &e, sizeof(lept_value));
         size++;
         lept_parse_whitespace(c);
-        if (*c->json == ','){
+        if (*c->json == ',') {
             c->json++;
             lept_parse_whitespace(c);
         }
@@ -219,10 +219,14 @@ static int lept_parse_array(lept_context* c, lept_value* v) {
             return LEPT_PARSE_OK;
         }
         else {
-            c->top = head; /* recovery stack*/
-            return LEPT_PARSE_MISS_COMMA_OR_SQUARE_BRACKET;
+            ret = LEPT_PARSE_MISS_COMMA_OR_SQUARE_BRACKET;
+            break;
         }
     }
+    /*When run into error, pop and free values on stack*/
+    for (i = 0; i < size; ++i)
+        lept_free((lept_value*)lept_context_pop(c, sizeof(lept_value)));
+    return ret;
 }
 
 static int lept_parse_value(lept_context* c, lept_value* v) {
@@ -259,14 +263,27 @@ int lept_parse(lept_value* v, const char* json) {
 }
 
 void lept_free(lept_value* v) {
+    size_t i;
     assert(v != NULL);
+    /*
     if (v->type == LEPT_STRING)
         free(v->u.s.s);
     else if (v->type == LEPT_ARRAY){
-        size_t i;
         for(i = 0; i < v->u.a.size; ++i)
             lept_free(&v->u.a.e[i]);
         free(v->u.a.e);
+    }
+    */
+    switch (v->type) {
+        case LEPT_STRING:
+            free(v->u.s.s);
+            break;
+        case LEPT_ARRAY:
+            for (i = 0; i < v->u.a.size; i++)
+                lept_free(&v->u.a.e[i]);
+            free(v->u.a.e);
+            break;
+        default: break;
     }
     v->type = LEPT_NULL;
 }
