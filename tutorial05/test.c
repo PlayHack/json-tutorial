@@ -152,6 +152,10 @@ static void test_parse_array() {
     lept_get_string_length(lept_get_array_element(&v, 4)));
 #endif
     
+    lept_free(&v);
+    lept_init(&v);
+
+    EXPECT_EQ_INT(LEPT_PARSE_OK, lept_parse(&v, "[ ]"));
     EXPECT_EQ_INT(LEPT_PARSE_OK, lept_parse(&v,"[[], [0], [0,1], [0, 1, 2]]"));
     EXPECT_EQ_INT(LEPT_ARRAY, lept_get_type(&v));
     EXPECT_EQ_SIZE_T(4, lept_get_array_size(&v));
